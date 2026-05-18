@@ -1,0 +1,24 @@
+{
+  "name": "vercel-ai-airi",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "15.3.8",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "openai": "^4.98.0",
+    "@supabase/supabase-js": "^2.49.8",
+    "@line/bot-sdk": "^9.8.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "@types/node": "^22.15.21",
+    "@types/react": "^19.1.4",
+    "@types/react-dom": "^19.1.5"
+  }
+}
