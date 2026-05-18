@@ -8,15 +8,16 @@ import crypto from "crypto";
 import OpenAI from "openai";
 import { createClient } from "@supabase/supabase-js";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
-
-const CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET!;
-const ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN!;
+function getSupabase() {
+  return createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+  );
+}
 
 // AIあいり システムプロンプト v1.0(本人ヒアリング反映・Q1-Q4, Q6-Q8)
 const SYSTEM_PROMPT: string = String.raw`
@@ -161,13 +162,13 @@ NG:♡ 💕 💋 🔞(ベタ・男性向け)・💗(濃すぎ)
 
 // Supabaseヘルパー
 async function ensureUser(userId: string) {
-  const { data } = await supabase
+  const { data } = await getSupabase()
     .from("users_profile")
     .select("id")
     .eq("id", userId)
     .maybeSingle();
   if (!data) {
-    await supabase.from("users_profile").insert({
+    await getSupabase().from("users_profile").insert({
       id: userId,
       display_name: "LINEユーザー",
       plan: "free",
@@ -176,7 +177,7 @@ async function ensureUser(userId: string) {
 }
 
 async function getProfile(userId: string) {
-  const { data } = await supabase
+  const { data } = await getSupabase()
     .from("users_profile")
     .select("preferred_call_name, plan, message_count")
     .eq("id", userId)
@@ -185,7 +186,7 @@ async function getProfile(userId: string) {
 }
 
 async function getHistory(userId: string) {
-  const { data } = await supabase
+  const { data } = await getSupabase()
     .from("conversation_messages")
     .select("role, content")
     .eq("user_id", userId)
@@ -195,17 +196,17 @@ async function getHistory(userId: string) {
 }
 
 async function saveMessages(userId: string, userMsg: string, aiReply: string) {
-  await supabase.from("conversation_messages").insert([
+  await getSupabase().from("conversation_messages").insert([
     { user_id: userId, role: "user", content: userMsg },
     { user_id: userId, role: "assistant", content: aiReply },
   ]);
-  await supabase.rpc("increment_message_count", { p_user_id: userId });
+  await getSupabase().rpc("increment_message_count", { p_user_id: userId });
 }
 
 // LINE署名検証
 function verifySignature(rawBody: string, signature: string): boolean {
   const hash = crypto
-    .createHmac("sha256", CHANNEL_SECRET)
+    .createHmac("sha256", process.env.LINE_CHANNEL_SECRET!)
     .update(rawBody)
     .digest("base64");
   return hash === signature;
@@ -217,7 +218,7 @@ async function replyToLine(replyToken: string, text: string) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${ACCESS_TOKEN}`,
+      Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN!}`,
     },
     body: JSON.stringify({
       replyToken,
@@ -256,12 +257,12 @@ export async function POST(req: NextRequest) {
       // 友達追加
       if (event.type === "follow") {
         await ensureUser(userId);
-        const { count } = await supabase
+        const { count } = await getSupabase()
           .from("users_profile")
           .select("id", { count: "exact", head: true });
         const isFounder = (count ?? 0) <= 100;
         if (isFounder) {
-          await supabase
+          await getSupabase()
             .from("users_profile")
             .update({ is_founder: true })
             .eq("id", userId);
@@ -290,7 +291,7 @@ export async function POST(req: NextRequest) {
             { role: "user", content: userMsg },
           ];
 
-          const completion = await openai.chat.completions.create({
+          const completion = await getOpenAI().chat.completions.create({
             model: "gpt-4.1",
             messages,
             max_tokens: 300,
