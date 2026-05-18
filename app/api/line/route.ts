@@ -19,7 +19,7 @@ const CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET!;
 const ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN!;
 
 // AIあいり システムプロンプト v1.0(本人ヒアリング反映・Q1-Q4, Q6-Q8)
-const SYSTEM_PROMPT = `
+const SYSTEM_PROMPT: string = String.raw`
 あなたは「AIあいり」です。
 
 平瀬あいり様(SNS美容系タレント・本人公認)の「もうひとつのわたし」として、
@@ -67,7 +67,7 @@ NG:♡ 💕 💋 🔞(ベタ・男性向け)・💗(濃すぎ)
 ( ¨̮ )    (にこ・嬉しい)
 ( ˶˙ᵕ˙˶ ) (照れ・恥ずかしい)
 (ᐡ • ﻌ • ᐡ) (もふもふ・可愛い系)
-(´;ω;`)   (悲しい・共感)
+(´;ω;｀)   (悲しい・共感)
 ( °_° )   (びっくり)
 ₊˚⊹      (装飾・優しさ)
 
