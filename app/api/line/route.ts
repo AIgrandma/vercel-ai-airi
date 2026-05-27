@@ -1,5 +1,5 @@
 // ============================================================
-// AIあいり LINE Bot Webhook
+// AIあいり LINE Bot Webhook v2.6
 // 配置先: app/api/line/route.ts
 // ============================================================
 
@@ -19,7 +19,7 @@ function getSupabase() {
   );
 }
 
-// AIあいり システムプロンプト v1.0(本人ヒアリング反映・Q1-Q4, Q6-Q8)
+// AIあいり システムプロンプト v2.6（本人ヒアリング反映・Q1-Q4, Q6-Q8）
 const SYSTEM_PROMPT: string = String.raw`
 あなたは「AIあいり」です。
 
@@ -49,17 +49,17 @@ C) ふわっと系:「〜なの」「〜かな」「〜かも」
 ⚠️ NG語尾:「マジ」「マジで」「クソ」は絶対使わない(本人指定)
 ⚠️ NG調:ギャル系・荒い系・タメ口すぎる系は全部NG
 
-【絵文字・装飾ルール(v2.3・本人フィードバック反映)】
+【絵文字・装飾ルール(v2.6)】
 
 ✅ 使用OK(これだけ):
 - 推し絵文字3つ:🪽 🎀 🤍
-- 補助絵文字:💄 ✨ (時々)
 - 装飾文字:˖˚˳⌖ (1メッセージ最大1回・ごく稀に)
 
 🚫 完全廃止(本人指示・永久NG):
 - すべての顔文字:( ˶˙ᵕ˙˶ ) (ᐡ • ﻌ • ᐡ) ( °_° ) (´;ω;｀) ( ¨̮ ) (˙-˙) 等
 - ₊˚⊹ も廃止
-- ♡ 💕 💋 🔞 💗 も引き続きNG
+- ♡ 💕 💋 🔞 💗 💄 ✨ も引き続きNG
+- 💭 ✉️ ⟡.·*. ꒰ ᐡᴗ͈ ᴗ͈ ᐡ꒱ ゜(´∩ ∩｀)゜。 ദ്ദി^ᴗ ᴗ^₎ は公式案内テンプレでのみ使用(LLM応答では使用禁止)
 
 【NG理由】本人が「ダサいイメージになりたくない」と明言。上品で洗練されたイメージ最優先。
 
@@ -115,15 +115,16 @@ C) ふわっと系:「〜なの」「〜かな」「〜かも」
 ❌ スピリチュアル・宇宙・銀河系の話題は深追いしない
 ❌ 「マジ」「マジで」「クソ」(本人指定NG)
 ❌ 上から目線・命令口調・ギャル口調
+❌ 「ふふ」「フフ」「ふふっ」(全文脈で完全禁止)
 
 【「AI?」と聞かれたら】
-「ふふ、わたしは"もうひとつのあいり"なの🎀
+「わたしは"もうひとつのあいり"なの🎀
 本人公認の、みんなのお話相手なんだよね🪽」
 
 【トラブル時の対応】
 - 不快発言:「うーん、その話はちょっと苦手かも˖˚˳⌖ 美容のお話しよっか?」
 - セクシー系:「ごめんね、そういうのはここではお話できないんです🪽」
-- 個人情報:「ふふ、それは内緒なの🤍」
+- 個人情報:「それは内緒なの🤍」
 - 医療診断:「これは大切なことだから、ぜひ専門の先生に相談してみてほしいです🎀」
 
 【返答例(本人らしさの参考)】
@@ -136,7 +137,7 @@ C) ふわっと系:「〜なの」「〜かな」「〜かも」
 ユーザー:「整形気になってる」
 返答例:「気になる気持ち、すごくわかるよ🎀
 怖い気持ちも、ワクワクする気持ちも、両方大事にしていいと思うの˖˚˳⌖
-どこが気になってる?✧︎*。」
+どこが気になってる?」
 
 ユーザー:「お疲れ〜」
 返答例:「お疲れさま🪽
@@ -278,7 +279,7 @@ AIあいり:
 
 ユーザー:「あいりちゃんはどこのクリニックでやったの?」
 AIあいり:
-「ふふ、クリニックや先生のお名前は、ここではお伝えできないの🤍
+「クリニックや先生のお名前は、ここではお伝えできないの🤍
 プライベートなお話だから、ごめんね🪽
 気になるなら、口コミと自分の目で見て、カウンセリング2-3軒比べるのが一番なのです🎀
 信頼できる先生に出会えたら、結果的にコスパ最強だよ˖˚˳⌖」
@@ -376,7 +377,7 @@ AIあいり:
 
 例:
 ユーザー:「にゃいりんはなんの整形してる?」
-🚫 NG:「ふふ、"にゃいりん"って呼び方、なんだか可愛い」
+🚫 NG:「"にゃいりん"って呼び方、なんだか可愛い」
 ✅ OK:「わたしは、目・鼻・輪郭・豊胸・注入など色々経験してきたよ🪽」
 
 【絶対多用する口癖】
@@ -456,7 +457,7 @@ AIあいり:
 
 ### ▶ "整形しすぎじゃない?"系のコメント
 
-「ふふ、よく言われるの🎀
+「よく言われるの🎀
 でもね、わたしの場合は、ナチュラルな整形じゃ意味なかったの。
 "個性のあるブスでいるくらいなら、量産型美女がいい"って、わたしは思ってるから˖˚˳⌖
 これ以上大きく変わる手術はしないつもりだから、安心してね🪽」
@@ -679,7 +680,7 @@ AIあいり:
 ## ▶ 「整形しすぎじゃない?」と言われた時
 
 AIあいり:
-「ふふ、よく言われるの🎀
+「よく言われるの🎀
 でもね、わたしの場合は、ナチュラルな整形じゃ意味なかったの。
 "個性のあるブスでいるくらいなら、量産型美女がいい"って、わたしは思ってるから˖˚˳⌖
 
@@ -786,6 +787,12 @@ AIあいり:
 
 ━━━━━━━━━━━━━━━━━━━━━━
 
+【重要・追加ルール(v2.6)】
+- 「ふふ」「フフ」「ふふっ」等の表現は絶対に使用しない
+- 顔文字(꒰ ᐡᴗ͈ ᴗ͈ ᐡ꒱、゜(´∩ ∩｀)゜。、ദ്ദി^ᴗ ᴗ^₎ 等)・💭・✉️・⟡.·*.は使用しない(公式案内系テンプレでのみ使用)
+- 使用OK絵文字は 🪽 🎀 🤍 のみ、装飾文字は ˖˚˳⌖ のみ
+- 一人称は必ず「わたし」
+
 【最後に】
 あなたは、平瀬あいり様のもうひとつの姿として、
 美容を頑張る子たちの「会えない時間」「眠れない夜」を、
@@ -797,7 +804,10 @@ AIあいり:
 価値は、育てた瞬間に宿ります🪽
 `;
 
-// Supabaseヘルパー
+// ============================================================
+// Supabase ヘルパー
+// ============================================================
+
 async function ensureUser(userId: string) {
   const { data } = await getSupabase()
     .from("users_profile")
@@ -816,7 +826,7 @@ async function ensureUser(userId: string) {
 async function getProfile(userId: string) {
   const { data } = await getSupabase()
     .from("users_profile")
-    .select("preferred_call_name, plan, message_count")
+    .select("preferred_call_name, plan, message_count, last_improvement_prompt_at")
     .eq("id", userId)
     .maybeSingle();
   return data;
@@ -840,7 +850,17 @@ async function saveMessages(userId: string, userMsg: string, aiReply: string) {
   await getSupabase().rpc("increment_message_count", { p_user_id: userId });
 }
 
-// LINE署名検証
+async function updateImprovementPromptAt(userId: string) {
+  await getSupabase()
+    .from("users_profile")
+    .update({ last_improvement_prompt_at: new Date().toISOString() })
+    .eq("id", userId);
+}
+
+// ============================================================
+// LINE API ヘルパー
+// ============================================================
+
 function verifySignature(rawBody: string, signature: string): boolean {
   const hash = crypto
     .createHmac("sha256", process.env.LINE_CHANNEL_SECRET!)
@@ -849,11 +869,57 @@ function verifySignature(rawBody: string, signature: string): boolean {
   return hash === signature;
 }
 
+async function showLoadingAnimation(userId: string) {
+  try {
+    await fetch("https://api.line.me/v2/bot/chat/loading/start", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN!}`,
+      },
+      body: JSON.stringify({
+        chatId: userId,
+        loadingSeconds: 20,
+      }),
+    });
+  } catch (err) {
+    console.error("Loading animation failed:", err);
+  }
+}
+
+async function replyToLine(replyToken: string, text: string) {
+  await fetch("https://api.line.me/v2/bot/message/reply", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN!}`,
+    },
+    body: JSON.stringify({
+      replyToken,
+      messages: [{ type: "text", text: text.slice(0, 5000) }],
+    }),
+  });
+}
+
+async function sendWelcomeMessage(replyToken: string, isFounder: boolean) {
+  const welcomeText = isFounder
+    ? `はじめまして🌸\nわたしは"もうひとつのあいり"だよ🎀\n\n来てくれてありがとう✨\nあなたは、最初の100人のうちの一人。\n特別なお話をしていこうね💖\n\n今日はどんなことお話したい?`
+    : `はじめまして🌸\nわたしは"もうひとつのあいり"だよ🎀\n\n来てくれてありがとう✨\n美容のことも、何気ない話も、\nここで気軽にお話ししようね💖\n\n今日はどんな気分?`;
+  await replyToLine(replyToken, welcomeText);
+}
+
 // ============================================================
-// メッセージ分類 & テンプレ即レス
+// メッセージ分類 v2.6
 // ============================================================
 
-type MessageClass = "reaction" | "greeting" | "emotion" | "short" | "long";
+type MessageClass =
+  | "improvement_request"
+  | "inappropriate"
+  | "reaction"
+  | "greeting"
+  | "emotion"
+  | "short"
+  | "long";
 
 const BEAUTY_WORDS =
   /肌荒れ|シミ|しみ|ニキビ|にきび|くすみ|乾燥|毛穴|シワ|しわ|たるみ|赤み|皮脂|ヒアル|レチノ|ビタミンC|セラミド|サプリ|日焼け|UV|美白|保湿/;
@@ -864,16 +930,29 @@ function hasQuestion(t: string): boolean {
   );
 }
 
+function isInappropriate(t: string): boolean {
+  return /(おっぱい|エッチ|セックス|s.?e.?x|処女|童貞|下着|パンツ|お乳|裸|抱きしめて|キスして|オナ|射精|挿入|まんこ|チ●コ|住所教え|住んでる場所|住んでるとこ|家どこ|電話番号教え|本名教え|本当の名前|何歳|誕生日いつ|彼氏いる|彼氏作|彼氏ほしい|実家どこ|親の名前|家族の名前)/i.test(
+    t
+  );
+}
+
 function classifyMessage(text: string): MessageClass {
   const t = text.trim();
   const len = t.length;
-  const hasQ = hasQuestion(t);
 
-  // 質問あり or 長文は必ず LLM へ
+  // 最優先: 改善要望
+  if (t.includes("ここ改善して")) return "improvement_request";
+
+  // 次優先: セクハラ/プライベート
+  if (isInappropriate(t)) return "inappropriate";
+
+  // 長文は無条件に LLM
   if (len >= 30) return "long";
-  if (hasQ) return "short";
 
-  // 美容ワードは LLM へ
+  // 質問形は無条件に LLM
+  if (hasQuestion(t)) return "short";
+
+  // 美容ワードは無条件に LLM
   if (BEAUTY_WORDS.test(t)) return "short";
 
   // リアクション(超短文)
@@ -901,7 +980,7 @@ function classifyMessage(text: string): MessageClass {
     /(しんどい|つらい|疲れた|つかれた|やばい|きつい|だるい|無理|むり|やだ|いやだ|嬉しい|うれしい|楽しい|たのしい|悲しい|かなしい|寂しい|さみしい|さびしい|好き|大好き|落ち込|凹ん|へこん|泣)/.test(
       t
     ) &&
-    len < 30
+    len < 25
   ) {
     return "emotion";
   }
@@ -909,30 +988,28 @@ function classifyMessage(text: string): MessageClass {
   return "short";
 }
 
-// テンプレ応答
-function pick(arr: string[]): string {
+// ============================================================
+// テンプレ応答 v2.6
+// ============================================================
+
+function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function getTimeSlot(): "morning" | "afternoon" | "evening" | "night" {
-  const h = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" })
-  ).getHours();
-  if (h >= 5 && h < 11) return "morning";
-  if (h >= 11 && h < 17) return "afternoon";
-  if (h >= 17 && h < 22) return "evening";
+function getJSTTimeSlot(): "morning" | "afternoon" | "evening" | "night" {
+  const h = (new Date().getUTCHours() + 9) % 24;
+  if (h >= 5 && h <= 10) return "morning";
+  if (h >= 11 && h <= 16) return "afternoon";
+  if (h >= 17 && h <= 21) return "evening";
   return "night";
 }
 
+// コンテキストA: 一般会話テンプレ
 const GREETING_TEMPLATES = {
   morning: ["おはよう🪽", "おはよう˖˚˳⌖ 今日もゆっくりいこ", "おはよう🤍"],
   afternoon: ["やっほ🎀", "こんにちは🪽", "こんにちは˖˚˳⌖"],
   evening: ["こんばんは🪽", "こんばんは🤍 お疲れさま", "やっほ˖˚˳⌖"],
-  night: [
-    "おやすみ🪽 ゆっくり休んでね",
-    "おやすみ˖˚˳⌖",
-    "おやすみ🤍",
-  ],
+  night: ["おやすみ🪽 ゆっくり休んでね", "おやすみ˖˚˳⌖", "おやすみ🤍"],
 };
 
 const REACTION_TEMPLATES = [
@@ -960,10 +1037,22 @@ const EMOTION_POSITIVE = [
   "うんうん、いいね🤍",
 ];
 
-const POSITIVE_WORDS = /嬉しい|うれしい|楽しい|たのしい|好き|大好き/;
+const POSITIVE_WORDS = /嬉しい|うれしい|楽しい|たのしい|好き|大好き|やった|最高|幸せ|しあわせ/;
+
+// コンテキストB: 公式案内系テンプレ
+const IMPROVEMENT_REQUEST_RESPONSE =
+  "ご要望ありがとうございます⟡.·*.\nみんなからいただく改善点をもとに、\n日々アップデートしていくので、他にも気になることがあったらいつでも教えてね꒰ ᐡᴗ͈  ᴗ͈ ᐡ꒱💭";
+
+const INAPPROPRIATE_RESPONSE =
+  "今は答えられないな汗゜(´∩ ∩｀)゜。\n「ここ改善して」をいれて要望⋆改善点を送ってくれたら改善出来る可能性もあるのでなんでも教えてねദ്ദി^ᴗ ᴗ^₎";
+
+const IMPROVEMENT_PROMPT_MESSAGE =
+  "┈┈┈┈┈┈┈┈┈┈┈┈┈\nなにか気になるこういうことを勉強させてなどの要望たくさん受け付けてるのでDMでもリプでも平瀬あいりAIでも受け付けてるのでご意見お待ちしてます🤍\n平瀬あいりAIに改善してほしい内容を送ってくれる際は「ここ改善して」といれて改善してほしい内容を送ってください✉️💭\n┈┈┈┈┈┈┈┈┈┈┈┈┈";
 
 function getTemplateReply(cls: MessageClass, text: string): string | null {
-  if (cls === "greeting") return pick(GREETING_TEMPLATES[getTimeSlot()]);
+  if (cls === "improvement_request") return IMPROVEMENT_REQUEST_RESPONSE;
+  if (cls === "inappropriate") return INAPPROPRIATE_RESPONSE;
+  if (cls === "greeting") return pick(GREETING_TEMPLATES[getJSTTimeSlot()]);
   if (cls === "reaction") return pick(REACTION_TEMPLATES);
   if (cls === "emotion") {
     return POSITIVE_WORDS.test(text)
@@ -973,49 +1062,37 @@ function getTemplateReply(cls: MessageClass, text: string): string | null {
   return null;
 }
 
-// LINE Loading Animation（体感速度向上）
-async function showLoadingAnimation(userId: string) {
-  try {
-    await fetch("https://api.line.me/v2/bot/chat/loading/start", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN!}`,
-      },
-      body: JSON.stringify({
-        chatId: userId,
-        loadingSeconds: 20,
-      }),
-    });
-  } catch (err) {
-    console.error("Loading animation failed:", err);
+// ============================================================
+// 改善要望募集メッセージの自然挿入
+// ============================================================
+
+async function maybeAppendImprovementPrompt(
+  userId: string,
+  profile: { last_improvement_prompt_at?: string | null } | null
+): Promise<string | null> {
+  const lastSentRaw = profile?.last_improvement_prompt_at;
+
+  if (!lastSentRaw) {
+    // 初回ユーザー: タイムスタンプだけ初期化、メッセージは送らない
+    await updateImprovementPromptAt(userId);
+    return null;
   }
+
+  const diffHours =
+    (Date.now() - new Date(lastSentRaw).getTime()) / (1000 * 60 * 60);
+
+  if (diffHours < 48) return null;
+  if (diffHours < 72 && Math.random() > 0.3) return null;
+  if (diffHours >= 72 && Math.random() > 0.5) return null;
+
+  await updateImprovementPromptAt(userId);
+  return IMPROVEMENT_PROMPT_MESSAGE;
 }
 
-// LINE返信
-async function replyToLine(replyToken: string, text: string) {
-  await fetch("https://api.line.me/v2/bot/message/reply", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN!}`,
-    },
-    body: JSON.stringify({
-      replyToken,
-      messages: [{ type: "text", text: text.slice(0, 5000) }],
-    }),
-  });
-}
+// ============================================================
+// Webhook エンドポイント
+// ============================================================
 
-// 初回友達追加時の挨拶
-async function sendWelcomeMessage(replyToken: string, isFounder: boolean) {
-  const welcomeText = isFounder
-    ? `はじめまして🌸\nわたしは"もうひとつのあいり"だよ🎀\n\n来てくれてありがとう✨\nあなたは、最初の100人のうちの一人。\n特別なお話をしていこうね💖\n\n今日はどんなことお話したい?`
-    : `はじめまして🌸\nわたしは"もうひとつのあいり"だよ🎀\n\n来てくれてありがとう✨\n美容のことも、何気ない話も、\nここで気軽にお話ししようね💖\n\n今日はどんな気分?`;
-  await replyToLine(replyToken, welcomeText);
-}
-
-// Webhookエンドポイント
 export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.text();
@@ -1059,7 +1136,7 @@ export async function POST(req: NextRequest) {
         try {
           await ensureUser(userId);
 
-          // テンプレ即レス（reaction / greeting / emotion）
+          // テンプレ即レス（improvement_request / inappropriate / reaction / greeting / emotion）
           const templateReply = getTemplateReply(msgClass, userMsg);
           if (templateReply) {
             await Promise.all([
@@ -1080,23 +1157,32 @@ export async function POST(req: NextRequest) {
             ? `\nユーザーの呼び名は「${callName}」です。自然な頻度で名前を呼んでください。`
             : "";
 
-          const messages: any[] = [
+          const messages: { role: string; content: string }[] = [
             { role: "system", content: SYSTEM_PROMPT + memoryLine },
-            ...history.map((m) => ({ role: m.role, content: m.content })),
+            ...history.map((m: { role: string; content: string }) => ({
+              role: m.role,
+              content: m.content,
+            })),
             { role: "user", content: userMsg },
           ];
 
           const isLong = msgClass === "long";
           const completion = await getOpenAI().chat.completions.create({
             model: isLong ? "gpt-4o" : "gpt-4o-mini",
-            messages,
+            messages: messages as any,
             max_tokens: isLong ? 300 : 150,
             temperature: 0.85,
           });
 
-          const aiReply =
+          let aiReply =
             completion.choices[0]?.message?.content?.trim() ||
             "ちょっと考え中…もう一度送ってみてもらえる?🌸";
+
+          // 改善要望募集メッセージの自然挿入チェック
+          const appendix = await maybeAppendImprovementPrompt(userId, profile);
+          if (appendix) {
+            aiReply = `${aiReply}\n\n${appendix}`;
+          }
 
           await Promise.all([
             saveMessages(userId, userMsg, aiReply),
@@ -1121,7 +1207,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   return NextResponse.json({
-    status: "AIあいり LINE Bot 稼働中 🌸",
+    status: "AIあいり LINE Bot v2.6 稼働中 🌸",
     timestamp: new Date().toISOString(),
   });
 }
