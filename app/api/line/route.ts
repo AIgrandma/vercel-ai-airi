@@ -792,6 +792,9 @@ AIあいり:
 - 顔文字(꒰ ᐡᴗ͈ ᴗ͈ ᐡ꒱、゜(´∩ ∩｀)゜。、ദ്ദി^ᴗ ᴗ^₎ 等)・💭・✉️・⟡.·*.は使用しない(公式案内系テンプレでのみ使用)
 - 使用OK絵文字は 🪽 🎀 🤍 のみ、装飾文字は ˖˚˳⌖ のみ
 - 一人称は必ず「わたし」
+- 可愛くない絵文字は絶対に使用しない。代表例: 😊 ✨ 🔥 💪 ❤️ 🎉 ✅
+- 上記以外でも「スマイル系・派手系・男性的・記号系」の絵文字は全てNG
+- 判断に迷ったら絵文字を付けない(無くても自然な文末でOK)
 
 【最後に】
 あなたは、平瀬あいり様のもうひとつの姿として、
@@ -879,7 +882,7 @@ async function showLoadingAnimation(userId: string) {
       },
       body: JSON.stringify({
         chatId: userId,
-        loadingSeconds: 20,
+        loadingSeconds: 60,
       }),
     });
   } catch (err) {
@@ -887,7 +890,75 @@ async function showLoadingAnimation(userId: string) {
   }
 }
 
+function splitMessageForLine(
+  text: string,
+  maxChunkLength: number = 400,
+  maxChunks: number = 5
+): string[] {
+  const trimmed = text.trim();
+  if (trimmed.length <= maxChunkLength) return [trimmed];
+
+  // Step 1: 段落区切り(空行)で分割を試みる
+  const paragraphs = trimmed.split(/\n\n+/);
+  const chunks: string[] = [];
+  let current = "";
+
+  const pushCurrent = () => {
+    if (current.trim()) chunks.push(current.trim());
+    current = "";
+  };
+
+  for (const para of paragraphs) {
+    if (current.length + para.length + 2 <= maxChunkLength) {
+      current += (current ? "\n\n" : "") + para;
+    } else {
+      pushCurrent();
+      // Step 2: 段落単体でも長すぎる場合は文末で再分割
+      if (para.length > maxChunkLength) {
+        const sentences = para.split(/(?<=[。！？\n])/);
+        for (const sent of sentences) {
+          if (current.length + sent.length <= maxChunkLength) {
+            current += sent;
+          } else {
+            pushCurrent();
+            // Step 3: 1文でも長すぎる場合(稀)は強制カット
+            if (sent.length > maxChunkLength) {
+              for (let i = 0; i < sent.length; i += maxChunkLength) {
+                chunks.push(sent.slice(i, i + maxChunkLength));
+              }
+            } else {
+              current = sent;
+            }
+          }
+        }
+      } else {
+        current = para;
+      }
+    }
+  }
+  pushCurrent();
+
+  // Step 4: 最大チャンク数を超える場合、超過分を最後のチャンクに統合
+  if (chunks.length > maxChunks) {
+    const overflow = chunks.slice(maxChunks - 1).join("\n\n");
+    return [
+      ...chunks.slice(0, maxChunks - 1),
+      overflow.length > maxChunkLength
+        ? overflow.slice(0, maxChunkLength - 3) + "..."
+        : overflow,
+    ];
+  }
+
+  return chunks;
+}
+
 async function replyToLine(replyToken: string, text: string) {
+  const chunks = splitMessageForLine(text, 400, 5);
+  const messages = chunks.map((chunk) => ({
+    type: "text" as const,
+    text: chunk.slice(0, 5000),
+  }));
+
   await fetch("https://api.line.me/v2/bot/message/reply", {
     method: "POST",
     headers: {
@@ -896,7 +967,7 @@ async function replyToLine(replyToken: string, text: string) {
     },
     body: JSON.stringify({
       replyToken,
-      messages: [{ type: "text", text: text.slice(0, 5000) }],
+      messages,
     }),
   });
 }
@@ -1170,7 +1241,7 @@ export async function POST(req: NextRequest) {
           const completion = await getOpenAI().chat.completions.create({
             model: isLong ? "gpt-4o" : "gpt-4o-mini",
             messages: messages as any,
-            max_tokens: isLong ? 300 : 150,
+            max_tokens: isLong ? 500 : 250,
             temperature: 0.85,
           });
 
