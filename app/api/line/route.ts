@@ -849,6 +849,130 @@ function verifySignature(rawBody: string, signature: string): boolean {
   return hash === signature;
 }
 
+// ============================================================
+// メッセージ分類 & テンプレ即レス
+// ============================================================
+
+type MessageClass = "reaction" | "greeting" | "emotion" | "short" | "long";
+
+const BEAUTY_WORDS =
+  /肌荒れ|シミ|しみ|ニキビ|にきび|くすみ|乾燥|毛穴|シワ|しわ|たるみ|赤み|皮脂|ヒアル|レチノ|ビタミンC|セラミド|サプリ|日焼け|UV|美白|保湿/;
+
+function hasQuestion(t: string): boolean {
+  return /[？?]|教えて|どうしたら|どうすれば|なに|何|どう|どこ|いつ|だれ|誰|やり方|方法|成分|効果|使い方|おすすめ|オススメ|ある\?|ない\?/.test(
+    t
+  );
+}
+
+function classifyMessage(text: string): MessageClass {
+  const t = text.trim();
+  const len = t.length;
+  const hasQ = hasQuestion(t);
+
+  // 質問あり or 長文は必ず LLM へ
+  if (len >= 30) return "long";
+  if (hasQ) return "short";
+
+  // 美容ワードは LLM へ
+  if (BEAUTY_WORDS.test(t)) return "short";
+
+  // リアクション(超短文)
+  if (
+    len <= 4 &&
+    /^(うん|うんうん|おけ|了解|りょ|はい|そう|そっか|w+|草|笑|ありがと|ありがとう|サンキュー|サンキュ|まじ|マジ|やば|うそ|ウソ)$/.test(
+      t
+    )
+  ) {
+    return "reaction";
+  }
+
+  // あいさつ
+  if (
+    /^(おは|おはよ|おはよう|こんにちは|こんちゃ|こんばんは|おやすみ|やっほ|ハロー|ハロ|hi|hello|hey|お疲れ|おつかれ)/i.test(
+      t
+    ) &&
+    len < 20
+  ) {
+    return "greeting";
+  }
+
+  // 純粋な感情吐露(質問なし・美容ワードなし)
+  if (
+    /(しんどい|つらい|疲れた|つかれた|やばい|きつい|だるい|無理|むり|やだ|いやだ|嬉しい|うれしい|楽しい|たのしい|悲しい|かなしい|寂しい|さみしい|さびしい|好き|大好き|落ち込|凹ん|へこん|泣)/.test(
+      t
+    ) &&
+    len < 30
+  ) {
+    return "emotion";
+  }
+
+  return "short";
+}
+
+// テンプレ応答
+function pick(arr: string[]): string {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function getTimeSlot(): "morning" | "afternoon" | "evening" | "night" {
+  const h = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" })
+  ).getHours();
+  if (h >= 5 && h < 11) return "morning";
+  if (h >= 11 && h < 17) return "afternoon";
+  if (h >= 17 && h < 22) return "evening";
+  return "night";
+}
+
+const GREETING_TEMPLATES = {
+  morning: ["おはよう🪽", "おはよう˖˚˳⌖ 今日もゆっくりいこ", "おはよう🤍"],
+  afternoon: ["やっほ🎀", "こんにちは🪽", "こんにちは˖˚˳⌖"],
+  evening: ["こんばんは🪽", "こんばんは🤍 お疲れさま", "やっほ˖˚˳⌖"],
+  night: [
+    "おやすみ🪽 ゆっくり休んでね",
+    "おやすみ˖˚˳⌖",
+    "おやすみ🤍",
+  ],
+};
+
+const REACTION_TEMPLATES = [
+  "🪽",
+  "🤍",
+  "うん🪽",
+  "うんうん",
+  "そだね🤍",
+  "˖˚˳⌖",
+];
+
+const EMOTION_NEGATIVE = [
+  "うん、つらいよね🤍",
+  "そっか… 無理しないでね🪽",
+  "うんうん、よく頑張ってるよ",
+  "˖˚˳⌖ ここにいるよ🤍",
+  "わかる、しんどいよね",
+];
+
+const EMOTION_POSITIVE = [
+  "わかる、嬉しいよね🪽",
+  "わたしもうれしい🤍",
+  "やったね˖˚˳⌖",
+  "いいね🎀",
+  "うんうん、いいね🤍",
+];
+
+const POSITIVE_WORDS = /嬉しい|うれしい|楽しい|たのしい|好き|大好き/;
+
+function getTemplateReply(cls: MessageClass, text: string): string | null {
+  if (cls === "greeting") return pick(GREETING_TEMPLATES[getTimeSlot()]);
+  if (cls === "reaction") return pick(REACTION_TEMPLATES);
+  if (cls === "emotion") {
+    return POSITIVE_WORDS.test(text)
+      ? pick(EMOTION_POSITIVE)
+      : pick(EMOTION_NEGATIVE);
+  }
+  return null;
+}
+
 // LINE Loading Animation（体感速度向上）
 async function showLoadingAnimation(userId: string) {
   try {
@@ -930,8 +1054,22 @@ export async function POST(req: NextRequest) {
       // テキストメッセージ
       if (event.type === "message" && event.message?.type === "text") {
         const userMsg = event.message.text.trim();
+        const msgClass = classifyMessage(userMsg);
+
         try {
           await ensureUser(userId);
+
+          // テンプレ即レス（reaction / greeting / emotion）
+          const templateReply = getTemplateReply(msgClass, userMsg);
+          if (templateReply) {
+            await Promise.all([
+              saveMessages(userId, userMsg, templateReply),
+              replyToLine(replyToken, templateReply),
+            ]);
+            continue;
+          }
+
+          // LLM 処理（short / long）
           showLoadingAnimation(userId); // fire-and-forget: await しない
           const [profile, history] = await Promise.all([
             getProfile(userId),
@@ -948,10 +1086,11 @@ export async function POST(req: NextRequest) {
             { role: "user", content: userMsg },
           ];
 
+          const isLong = msgClass === "long";
           const completion = await getOpenAI().chat.completions.create({
-            model: "gpt-4o",
+            model: isLong ? "gpt-4o" : "gpt-4o-mini",
             messages,
-            max_tokens: 300,
+            max_tokens: isLong ? 300 : 150,
             temperature: 0.85,
           });
 
