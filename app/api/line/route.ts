@@ -849,6 +849,25 @@ function verifySignature(rawBody: string, signature: string): boolean {
   return hash === signature;
 }
 
+// LINE Loading Animation（体感速度向上）
+async function showLoadingAnimation(userId: string) {
+  try {
+    await fetch("https://api.line.me/v2/bot/chat/loading/start", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.LINE_CHANNEL_ACCESS_TOKEN!}`,
+      },
+      body: JSON.stringify({
+        chatId: userId,
+        loadingSeconds: 20,
+      }),
+    });
+  } catch (err) {
+    console.error("Loading animation failed:", err);
+  }
+}
+
 // LINE返信
 async function replyToLine(replyToken: string, text: string) {
   await fetch("https://api.line.me/v2/bot/message/reply", {
@@ -913,6 +932,7 @@ export async function POST(req: NextRequest) {
         const userMsg = event.message.text.trim();
         try {
           await ensureUser(userId);
+          showLoadingAnimation(userId); // fire-and-forget: await しない
           const [profile, history] = await Promise.all([
             getProfile(userId),
             getHistory(userId),
@@ -929,7 +949,7 @@ export async function POST(req: NextRequest) {
           ];
 
           const completion = await getOpenAI().chat.completions.create({
-            model: "gpt-4.1",
+            model: "gpt-4o",
             messages,
             max_tokens: 300,
             temperature: 0.85,
