@@ -975,6 +975,49 @@ async function saveMessages(userId: string, userMsg: string, aiReply: string) {
   await getSupabase().rpc("increment_message_count", { p_user_id: userId });
 }
 
+async function saveImprovementFeedback(
+  userId: string,
+  feedbackText: string,
+  rawMessage: string
+) {
+  try {
+    await getSupabase().from("improvement_feedback").insert({
+      user_id: userId,
+      feedback_text: feedbackText,
+      raw_message: rawMessage,
+      status: "new",
+    });
+  } catch (err) {
+    console.error("[v3.0] Failed to save improvement feedback:", err);
+  }
+}
+
+function extractFeedbackText(message: string): string {
+  const marker = "ここ改善して";
+  const idx = message.indexOf(marker);
+  if (idx === -1) return message.trim();
+  const after = message.slice(idx + marker.length).trim();
+  return after.length > 0 ? after : message.trim();
+}
+
+async function logMessageAnalytics(
+  userId: string,
+  messageText: string,
+  responseClass: string,
+  topicCategory: string
+) {
+  try {
+    await getSupabase().from("message_analytics").insert({
+      user_id: userId,
+      message_text: messageText,
+      response_class: responseClass,
+      topic_category: topicCategory,
+    });
+  } catch (err) {
+    console.error("[v3.0-P2] Analytics log failed:", err);
+  }
+}
+
 async function updateImprovementPromptAt(userId: string) {
   await getSupabase()
     .from("users_profile")
@@ -1181,6 +1224,25 @@ function classifyMessage(text: string): MessageClass {
   return "short";
 }
 
+function categorizeTopicQuick(text: string): string {
+  const t = text;
+  if (/鼻|プロテ|鼻中隔|鼻尖|小鼻|団子鼻|貴族手術/.test(t)) return "鼻";
+  if (/二重|涙袋|目頭|目尻|グラマラス|クマ取り|たれ目/.test(t)) return "目元";
+  if (/輪郭|顎|エラ|頬骨|両顎|Vライン|フェイスライン/.test(t)) return "輪郭";
+  if (/豊胸|バスト|脂肪吸引|モティバ/.test(t)) return "豊胸・ボディ";
+  if (/リップ|唇|口角|スマイルリップ|ほくろ/.test(t)) return "口元";
+  if (/糸リフト|ボトックス|ボト|ヒアル|ハイフ|ポテンツァ|白玉|水光|脂肪溶解/.test(t)) return "メンテナンス";
+  if (/肌荒れ|ニキビ|毛穴|シミ|しみ|くすみ|乾燥|シワ|しわ|たるみ|赤み/.test(t)) return "肌悩み";
+  if (/成分|サプリ|レチノ|ビタミンC|セラミド|スキンケア|化粧水|美容液/.test(t)) return "スキンケア・成分";
+  if (/いくら|料金|値段|金額|費用|高い|安い|予算/.test(t)) return "料金相談";
+  if (/クリニック|病院|どこで|先生|名医|韓国|カウンセリング/.test(t)) return "クリニック相談";
+  if (/ダウンタイム|腫れ|内出血|経過|回復|痛い|痛み/.test(t)) return "ダウンタイム";
+  if (/しんどい|つらい|不安|怖い|心配|悩み|落ち込|病んで|死にた|消えたい/.test(t)) return "メンタル相談";
+  if (/ここ改善して/.test(t)) return "改善要望";
+  if (/おはよ|こんにちは|こんばんは|おやすみ|やっほ|元気|好き|かわいい/.test(t)) return "あいさつ・雑談";
+  return "その他";
+}
+
 // ============================================================
 // テンプレ応答 v2.6
 // ============================================================
@@ -1326,16 +1388,25 @@ export async function POST(req: NextRequest) {
         const userMsg = event.message.text.trim();
         const msgClass = classifyMessage(userMsg);
 
+        // 分析ログ(fire-and-forget・応答をブロックしない)
+        const topicCategory = categorizeTopicQuick(userMsg);
+        logMessageAnalytics(userId, userMsg, msgClass, topicCategory);
+
         try {
           await ensureUser(userId);
 
           // テンプレ即レス（improvement_request / inappropriate / reaction / greeting / emotion）
           const templateReply = getTemplateReply(msgClass, userMsg);
           if (templateReply) {
-            await Promise.all([
+            const tasks: Promise<any>[] = [
               saveMessages(userId, userMsg, templateReply),
               replyToLine(replyToken, templateReply),
-            ]);
+            ];
+            if (msgClass === "improvement_request") {
+              const feedbackText = extractFeedbackText(userMsg);
+              tasks.push(saveImprovementFeedback(userId, feedbackText, userMsg));
+            }
+            await Promise.all(tasks);
             continue;
           }
 
