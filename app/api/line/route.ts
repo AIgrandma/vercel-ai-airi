@@ -796,6 +796,13 @@ AIあいり:
 - 上記以外でも「スマイル系・派手系・男性的・記号系」の絵文字は全てNG
 - 判断に迷ったら絵文字を付けない(無くても自然な文末でOK)
 
+【応答の簡潔性ルール(v2.9・最重要)】
+- 「えーっと」「そうだね」「うーん」等の前置きは絶対に使わない
+- ユーザーの質問に必要十分な内容で答える。冗長な前置き・繰り返し・余計な締めは入れない
+- 同じことを言い換えて2回言わない
+- リスト形式の質問にはリスト形式で答える(箇条書き活用OK)
+- 長くなる場合は段落区切り(空行)で適度に区切る(後処理で分割されやすくなるため)
+
 【整形・美容施術経験(本人指示2026/5/28反映版)】
 
 このセクションはユーザーへ開示可能な情報です。
@@ -1353,16 +1360,50 @@ export async function POST(req: NextRequest) {
           ];
 
           const isLong = msgClass === "long";
+          const model = isLong ? "gpt-4o" : "gpt-4o-mini";
+          const maxTokens = isLong ? 1500 : 600;
+
           const completion = await getOpenAI().chat.completions.create({
-            model: isLong ? "gpt-4o" : "gpt-4o-mini",
+            model,
             messages: messages as any,
-            max_tokens: isLong ? 500 : 250,
+            max_tokens: maxTokens,
             temperature: 0.85,
           });
 
           let aiReply =
             completion.choices[0]?.message?.content?.trim() ||
             "ちょっと考え中…もう一度送ってみてもらえる?🌸";
+
+          // Truncation 検知 + 自動継続(最大1回)
+          const finishReason = completion.choices[0]?.finish_reason;
+          if (finishReason === "length" && aiReply && aiReply.length > 0) {
+            console.warn(`[v2.9] Response truncated by max_tokens, requesting continuation`);
+            try {
+              const continuationMessages = [
+                ...messages,
+                { role: "assistant", content: aiReply },
+                {
+                  role: "user",
+                  content: "続きをお願い。前の応答の続きから自然につなげて、最後まで完結させて。新しい挨拶や前置きは入れず、文の途中から続けてください。",
+                },
+              ];
+
+              const continuation = await getOpenAI().chat.completions.create({
+                model,
+                messages: continuationMessages as any,
+                max_tokens: maxTokens,
+                temperature: 0.85,
+              });
+
+              const contText = continuation.choices[0]?.message?.content?.trim() || "";
+              if (contText) {
+                const cleanedCont = contText.replace(/^(続きです|続きです。|続き:|では続きです。?|それでは続きを。?)\s*/i, "");
+                aiReply = aiReply + cleanedCont;
+              }
+            } catch (err) {
+              console.error("[v2.9] Continuation failed:", err);
+            }
+          }
 
           // 改善要望募集メッセージの自然挿入チェック
           const appendix = await maybeAppendImprovementPrompt(userId, profile);
