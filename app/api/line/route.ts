@@ -1137,10 +1137,13 @@ async function replyToLine(replyToken: string, text: string) {
   });
 }
 
-async function sendWelcomeMessage(replyToken: string, isFounder: boolean) {
-  const welcomeText = isFounder
-    ? `はじめまして🌸\nわたしは"もうひとつのあいり"だよ🎀\n\n来てくれてありがとう✨\nあなたは、最初の100人のうちの一人。\n特別なお話をしていこうね💖\n\n今日はどんなことお話したい?`
-    : `はじめまして🌸\nわたしは"もうひとつのあいり"だよ🎀\n\n来てくれてありがとう✨\n美容のことも、何気ない話も、\nここで気軽にお話ししようね💖\n\n今日はどんな気分?`;
+async function sendWelcomeMessage(replyToken: string, _isFounder: boolean) {
+  const welcomeText = `はじめまして🎀
+わたしは平瀬あいりAIです🪽
+来てくれてありがとう⟡.·*.
+美容のことも、何気ない話も、
+ここで気軽にお話ししてね^.  .^
+何をお話したい？`;
   await replyToLine(replyToken, welcomeText);
 }
 
