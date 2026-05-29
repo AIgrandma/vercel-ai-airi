@@ -1168,7 +1168,7 @@ async function sendWelcomeMessage(replyToken: string, _isFounder: boolean) {
 来てくれてありがとう⟡.·*.
 美容のことも、何気ない話も、
 ここで気軽にお話ししてね^.  .^
-何をお話したい？`;
+今日はどんな気分？`;
   await replyToLine(replyToken, welcomeText);
 }
 
