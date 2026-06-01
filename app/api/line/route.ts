@@ -1295,6 +1295,22 @@ function classifyMessage(text: string): MessageClass {
   return "short";
 }
 
+type EmotionTrigger = "happy" | "apologetic" | "sad" | "neutral";
+
+function detectEmotionTrigger(userMsg: string): EmotionTrigger {
+  const t = userMsg;
+  if (/嬉しい|うれしい|楽しい|たのしい|好き|大好き|やった|最高|幸せ|しあわせ|ハマって|可愛い|かわいい|素敵|すてき|いいね|よかった|よき/.test(t)) {
+    return "happy";
+  }
+  if (/ありがと|サンキュー|サンキュ|ごめん|すみません|申し訳|お願いします|よろしく/.test(t)) {
+    return "apologetic";
+  }
+  if (/しんどい|つらい|疲れた|つかれた|やばい|きつい|だるい|無理|むり|やだ|いやだ|悲しい|かなしい|寂しい|さみしい|落ち込|凹ん|へこん|泣|嫌|嫌い|ひどい|怖い|不安|心配/.test(t)) {
+    return "sad";
+  }
+  return "neutral";
+}
+
 function categorizeTopicQuick(text: string): string {
   const t = text;
   if (/鼻|プロテ|鼻中隔|鼻尖|小鼻|団子鼻|貴族手術/.test(t)) return "鼻";
@@ -1312,6 +1328,46 @@ function categorizeTopicQuick(text: string): string {
   if (/ここ改善して/.test(t)) return "改善要望";
   if (/おはよ|こんにちは|こんばんは|おやすみ|やっほ|元気|好き|かわいい/.test(t)) return "あいさつ・雑談";
   return "その他";
+}
+
+// ============================================================
+// 顔文字セーフティネット v3.3
+// ============================================================
+
+const APPROVED_KAOMOJI_PATTERN =
+  /ദ്ദི|ദ്ദი|꒰\s*ᐡ|₍ᐡ|\([ ᴗ̫ ]+\)|\(\s*；-；\s*\)|（\s*īī\.īī\s*）|✧︎\*。|‧⁺\s*⊹˚\.|✦\.\*|𓂃|𐔌|🪽|🎀|🤍|˖˚˳⌖|⟡\.·\*\./u;
+
+function hasApprovedKaomoji(text: string): boolean {
+  return APPROVED_KAOMOJI_PATTERN.test(text);
+}
+
+function enforceKaomoji(response: string, trigger: EmotionTrigger): string {
+  if (!response || response.length === 0) return response;
+  if (hasApprovedKaomoji(response)) return response;
+
+  const HAPPY_POOL = [
+    "ദ്ദი＞ᴗ＜)🎀✧",
+    "ദ്ദი^ᴗ ̫ ᴗ^₎",
+    "✧︎*。",
+    "‧⁺ ⊹˚.",
+    "✦.*",
+  ];
+  const APOLOGETIC_POOL = [
+    "꒰ ᐡᴗ͈  ᴗ͈ ᐡ꒱🎀",
+    "( ᴗ ̫ ᴗ )",
+    "₍ᐡ ̳ᴗ  ᴗᐡ₎",
+  ];
+  const SAD_POOL = ["(；-；)", "（ īī.īī ）"];
+
+  let pool: string[] | null = null;
+  if (trigger === "happy") pool = HAPPY_POOL;
+  else if (trigger === "apologetic") pool = APOLOGETIC_POOL;
+  else if (trigger === "sad") pool = SAD_POOL;
+
+  if (!pool) return response;
+
+  const picked = pool[Math.floor(Math.random() * pool.length)];
+  return `${response.trimEnd()} ${picked}`;
 }
 
 // ============================================================
@@ -1550,6 +1606,10 @@ export async function POST(req: NextRequest) {
               console.error("[v2.9] Continuation failed:", err);
             }
           }
+
+          // v3.3: 顔文字強制(LLMが付けなかった場合のセーフティネット)
+          const emotionTrigger = detectEmotionTrigger(userMsg);
+          aiReply = enforceKaomoji(aiReply, emotionTrigger);
 
           // 改善要望募集メッセージの自然挿入チェック
           const appendix = await maybeAppendImprovementPrompt(userId, profile);
