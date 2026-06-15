@@ -1019,7 +1019,7 @@ async function ensureUser(userId: string) {
 async function getProfile(userId: string) {
   const { data } = await getSupabase()
     .from("users_profile")
-    .select("preferred_call_name, plan, message_count, last_improvement_prompt_at")
+    .select("preferred_call_name, plan, message_count, last_improvement_prompt_at, area_region, area_country, area_asked_at, area_answered_at, area_declined")
     .eq("id", userId)
     .maybeSingle();
   return data;
@@ -1185,12 +1185,24 @@ function splitMessageForLine(
   return chunks;
 }
 
-async function replyToLine(replyToken: string, text: string) {
-  const chunks = splitMessageForLine(text, 400, 5);
-  const messages = chunks.map((chunk) => ({
-    type: "text" as const,
-    text: chunk.slice(0, 5000),
-  }));
+async function replyToLine(
+  replyToken: string,
+  textOrMessages: string | { type: string; text: string }[]
+) {
+  let messages: { type: string; text: string }[];
+
+  if (typeof textOrMessages === "string") {
+    const chunks = splitMessageForLine(textOrMessages, 400, 5);
+    messages = chunks.map((chunk) => ({
+      type: "text" as const,
+      text: chunk.slice(0, 5000),
+    }));
+  } else {
+    messages = textOrMessages.map((m) => ({
+      type: m.type,
+      text: m.text.slice(0, 5000),
+    }));
+  }
 
   await fetch("https://api.line.me/v2/bot/message/reply", {
     method: "POST",
@@ -1205,14 +1217,34 @@ async function replyToLine(replyToken: string, text: string) {
   });
 }
 
-async function sendWelcomeMessage(replyToken: string, _isFounder: boolean) {
+async function sendWelcomeMessage(
+  replyToken: string,
+  _isFounder: boolean,
+  userId: string
+) {
   const welcomeText = `はじめまして🎀
 わたしは平瀬あいりAIです🪽
 来てくれてありがとう⟡.·*.
 美容のことも、何気ない話も、
 ここで気軽にお話ししてね^.  .^
 今日はどんな気分？`;
-  await replyToLine(replyToken, welcomeText);
+
+  const areaAskText = `あ、ところでひとつだけ聞いてもいい?✉️
+いまどのへんに住んでる?
+都道府県の名前(海外なら国の名前)で教えてくれたら、近くのクリニック情報とかも案内できるようになる予定 ദ്ദი^ᴗ ̫ ᴗ^₎
+
+「内緒」って言ってくれても全然OKだよ🤍`;
+
+  await replyToLine(replyToken, [
+    { type: "text", text: welcomeText },
+    { type: "text", text: areaAskText },
+  ]);
+
+  // area_asked_at を記録
+  await getSupabase()
+    .from("users_profile")
+    .update({ area_asked_at: new Date().toISOString() })
+    .eq("id", userId);
 }
 
 // ============================================================
@@ -1294,6 +1326,89 @@ function classifyMessage(text: string): MessageClass {
 
   return "short";
 }
+
+// ============================================================
+// エリア検出 v3.4
+// ============================================================
+
+type AreaDetection = {
+  region?: string;
+  country?: string;
+  declined?: boolean;
+};
+
+const JP_PREFECTURES: { full: string; short: string }[] = [
+  { full: "北海道", short: "北海道" },
+  { full: "青森県", short: "青森" }, { full: "岩手県", short: "岩手" },
+  { full: "宮城県", short: "宮城" }, { full: "秋田県", short: "秋田" },
+  { full: "山形県", short: "山形" }, { full: "福島県", short: "福島" },
+  { full: "茨城県", short: "茨城" }, { full: "栃木県", short: "栃木" },
+  { full: "群馬県", short: "群馬" }, { full: "埼玉県", short: "埼玉" },
+  { full: "千葉県", short: "千葉" }, { full: "東京都", short: "東京" },
+  { full: "神奈川県", short: "神奈川" }, { full: "新潟県", short: "新潟" },
+  { full: "富山県", short: "富山" }, { full: "石川県", short: "石川" },
+  { full: "福井県", short: "福井" }, { full: "山梨県", short: "山梨" },
+  { full: "長野県", short: "長野" }, { full: "岐阜県", short: "岐阜" },
+  { full: "静岡県", short: "静岡" }, { full: "愛知県", short: "愛知" },
+  { full: "三重県", short: "三重" }, { full: "滋賀県", short: "滋賀" },
+  { full: "京都府", short: "京都" }, { full: "大阪府", short: "大阪" },
+  { full: "兵庫県", short: "兵庫" }, { full: "奈良県", short: "奈良" },
+  { full: "和歌山県", short: "和歌山" }, { full: "鳥取県", short: "鳥取" },
+  { full: "島根県", short: "島根" }, { full: "岡山県", short: "岡山" },
+  { full: "広島県", short: "広島" }, { full: "山口県", short: "山口" },
+  { full: "徳島県", short: "徳島" }, { full: "香川県", short: "香川" },
+  { full: "愛媛県", short: "愛媛" }, { full: "高知県", short: "高知" },
+  { full: "福岡県", short: "福岡" }, { full: "佐賀県", short: "佐賀" },
+  { full: "長崎県", short: "長崎" }, { full: "熊本県", short: "熊本" },
+  { full: "大分県", short: "大分" }, { full: "宮崎県", short: "宮崎" },
+  { full: "鹿児島県", short: "鹿児島" }, { full: "沖縄県", short: "沖縄" },
+];
+
+const COUNTRIES: { keys: string[]; country: string }[] = [
+  { keys: ["韓国", "Korea", "コリア", "ソウル"], country: "韓国" },
+  { keys: ["タイ", "Thailand", "バンコク"], country: "タイ" },
+  { keys: ["アメリカ", "USA", "米国", "ニューヨーク", "ロサンゼルス", "LA", "NY"], country: "アメリカ" },
+  { keys: ["イギリス", "UK", "英国", "ロンドン"], country: "イギリス" },
+  { keys: ["中国", "China", "上海", "北京"], country: "中国" },
+  { keys: ["台湾", "Taiwan", "台北"], country: "台湾" },
+  { keys: ["香港", "Hong Kong", "HK"], country: "香港" },
+  { keys: ["シンガポール", "Singapore"], country: "シンガポール" },
+  { keys: ["オーストラリア", "Australia", "シドニー", "メルボルン"], country: "オーストラリア" },
+  { keys: ["カナダ", "Canada", "トロント", "バンクーバー"], country: "カナダ" },
+  { keys: ["フランス", "France", "パリ"], country: "フランス" },
+  { keys: ["ドイツ", "Germany", "ベルリン"], country: "ドイツ" },
+  { keys: ["イタリア", "Italy", "ミラノ", "ローマ"], country: "イタリア" },
+  { keys: ["スペイン", "Spain"], country: "スペイン" },
+  { keys: ["ベトナム", "Vietnam", "ホーチミン", "ハノイ"], country: "ベトナム" },
+  { keys: ["フィリピン", "Philippines", "マニラ"], country: "フィリピン" },
+  { keys: ["インドネシア", "Indonesia", "ジャカルタ", "バリ"], country: "インドネシア" },
+  { keys: ["マレーシア", "Malaysia", "クアラルンプール"], country: "マレーシア" },
+  { keys: ["UAE", "ドバイ", "アラブ", "アブダビ"], country: "UAE" },
+  { keys: ["スイス", "Switzerland"], country: "スイス" },
+  { keys: ["オランダ", "Netherlands"], country: "オランダ" },
+];
+
+function detectArea(text: string): AreaDetection {
+  if (/^(内緒|ひみつ|秘密|ナイショ|ないしょ)$|答えたくない|言いたくない|教えたくない|内緒で|ひみつで/.test(text)) {
+    return { declined: true };
+  }
+  for (const p of JP_PREFECTURES) {
+    if (text.includes(p.full)) return { region: p.full, country: "日本" };
+  }
+  for (const p of JP_PREFECTURES) {
+    if (text.includes(p.short)) return { region: p.full, country: "日本" };
+  }
+  for (const c of COUNTRIES) {
+    for (const k of c.keys) {
+      if (text.includes(k)) return { country: c.country };
+    }
+  }
+  return {};
+}
+
+// ============================================================
+// 感情トリガー検出
+// ============================================================
 
 type EmotionTrigger = "happy" | "apologetic" | "sad" | "neutral";
 
@@ -1510,7 +1625,7 @@ export async function POST(req: NextRequest) {
             .update({ is_founder: true })
             .eq("id", userId);
         }
-        await sendWelcomeMessage(replyToken, isFounder);
+        await sendWelcomeMessage(replyToken, isFounder, userId);
         continue;
       }
 
@@ -1525,6 +1640,53 @@ export async function POST(req: NextRequest) {
 
         try {
           await ensureUser(userId);
+
+          // v3.4: エリア回答待ちチェック
+          const areaProfile = await getProfile(userId);
+          if (
+            areaProfile?.area_asked_at &&
+            !areaProfile?.area_answered_at &&
+            !areaProfile?.area_declined
+          ) {
+            const detected = detectArea(userMsg);
+
+            if (detected.declined) {
+              await getSupabase()
+                .from("users_profile")
+                .update({
+                  area_declined: true,
+                  area_answered_at: new Date().toISOString(),
+                })
+                .eq("id", userId);
+              const reply =
+                "わかった🤍 また気が向いたら教えてね ദ്ദი^ᴗ ̫ ᴗ^₎\nじゃあ、何でも気軽に話してね";
+              await Promise.all([
+                saveMessages(userId, userMsg, reply),
+                replyToLine(replyToken, reply),
+              ]);
+              continue;
+            }
+
+            if (detected.region || detected.country) {
+              await getSupabase()
+                .from("users_profile")
+                .update({
+                  area_region: detected.region || null,
+                  area_country: detected.country || null,
+                  area_answered_at: new Date().toISOString(),
+                })
+                .eq("id", userId);
+              const reply = detected.region
+                ? `${detected.region}なんだね🎀 ありがとう✦.*\n近くで使える情報が整ったら案内するね ദ്ദი＞ᴗ＜)🎀✧\n\nじゃあ、何でも気軽に話してね`
+                : `${detected.country}に住んでるんだ🪽 教えてくれてありがとう ദ്ദი^ᴗ ̫ ᴗ^₎\n海外からも来てくれて嬉しい⟡.·*.\n\nじゃあ、何でも気軽に話してね`;
+              await Promise.all([
+                saveMessages(userId, userMsg, reply),
+                replyToLine(replyToken, reply),
+              ]);
+              continue;
+            }
+            // エリア認識できなかった → 通常フローに流す
+          }
 
           // テンプレ即レス（improvement_request / inappropriate / reaction / greeting / emotion）
           const templateReply = getTemplateReply(msgClass, userMsg);
