@@ -1240,11 +1240,13 @@ async function sendWelcomeMessage(
     { type: "text", text: areaAskText },
   ]);
 
-  // area_asked_at を記録
+  // area_asked_at を記録(upsert で行が無くても安全)
   await getSupabase()
     .from("users_profile")
-    .update({ area_asked_at: new Date().toISOString() })
-    .eq("id", userId);
+    .upsert(
+      { id: userId, area_asked_at: new Date().toISOString() },
+      { onConflict: "id" }
+    );
 }
 
 // ============================================================
