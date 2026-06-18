@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import OpenAI from "openai";
 import { createClient } from "@supabase/supabase-js";
+import { buildAreaFollowUp } from "@/lib/area-knowledge";
 
 function getOpenAI() {
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -1677,9 +1678,8 @@ export async function POST(req: NextRequest) {
                   area_answered_at: new Date().toISOString(),
                 })
                 .eq("id", userId);
-              const reply = detected.region
-                ? `${detected.region}なんだね🎀 ありがとう✦.*\n近くで使える情報が整ったら案内するね ദ്ദი＞ᴗ＜)🎀✧\n\nじゃあ、何でも気軽に話してね`
-                : `${detected.country}に住んでるんだ🪽 教えてくれてありがとう ദ്ദი^ᴗ ̫ ᴗ^₎\n海外からも来てくれて嬉しい⟡.·*.\n\nじゃあ、何でも気軽に話してね`;
+              const areaKey = detected.region || detected.country || "";
+              const reply = buildAreaFollowUp(areaKey);
               await Promise.all([
                 saveMessages(userId, userMsg, reply),
                 replyToLine(replyToken, reply),
