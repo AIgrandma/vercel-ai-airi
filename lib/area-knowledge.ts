@@ -372,10 +372,40 @@ export function pickRandom<T>(arr: T[], count: number): T[] {
   return shuffled.slice(0, Math.min(count, arr.length));
 }
 
-export function buildAreaFollowUp(area: string): string {
+// ============================================================
+// クロージング質問（5パターン・美容/自分磨き軸）
+// ============================================================
+export const CLOSING_QUESTIONS: string[] = [
+  "最近気になってる美容のこととか、ちょっとした悩みでも気軽に聞いてね♡",
+  "最近、日頃からふと気になってることとか、悩んでることあったりする?♡",
+  "最近のスキンケアやメイクで、ちょっと迷ってることとかある?♡",
+  "最近気になってる自分磨きのこととか、聞かせてくれたら嬉しいな♡",
+  "最近の楽しかった話でも、ちょっとした悩みでも、なんでも話してね♡",
+];
+
+/**
+ * 前回と被らないクロージングをランダムに選ぶ
+ */
+export function pickRandomClosing(lastIndex: number | null): { text: string; index: number } {
+  const candidates = CLOSING_QUESTIONS
+    .map((text, index) => ({ text, index }))
+    .filter(({ index }) => index !== lastIndex);
+  const pick = candidates[Math.floor(Math.random() * candidates.length)];
+  return pick;
+}
+
+export function buildAreaFollowUp(
+  area: string,
+  lastClosingIndex: number | null = null,
+): { response: string; closingIndex: number } {
+  const closing = pickRandomClosing(lastClosingIndex);
+
   const kb = AREA_KB[area];
   if (!kb) {
-    return `${area}なんだね🪽✨ 教えてくれてありがとう🎀🤍\n\n最近行った場所や、お気に入りのスポットがあったら教えてね🎀🤍\n今日は何のお話する?♡`;
+    return {
+      response: `${area}なんだね🪽✨ 教えてくれてありがとう🎀🤍\n\n最近行った場所や、お気に入りのスポットがあったら教えてね🎀🤍\n${closing.text}`,
+      closingIndex: closing.index,
+    };
   }
 
   const selectedHighlights = pickRandom(kb.highlights, 2);
@@ -383,7 +413,10 @@ export function buildAreaFollowUp(area: string): string {
 
   const part1 = `${area}、素敵な場所だよね🪽✨ ${kb.atmosphere}が楽しめるのが魅力だよね。`;
   const part2 = `${selectedHighlights.join("や")}も多いし、${selectedVibe}!`;
-  const part3 = `最近行った場所や、お気に入りのスポットがあったら教えてね🎀🤍\n今日は何のお話する?♡`;
+  const part3 = `最近行った場所や、お気に入りのスポットがあったら教えてね🎀🤍\n${closing.text}`;
 
-  return `${part1}\n${part2}\n\n${part3}`;
+  return {
+    response: `${part1}\n${part2}\n\n${part3}`,
+    closingIndex: closing.index,
+  };
 }

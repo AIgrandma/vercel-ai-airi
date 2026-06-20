@@ -1020,7 +1020,7 @@ async function ensureUser(userId: string) {
 async function getProfile(userId: string) {
   const { data } = await getSupabase()
     .from("users_profile")
-    .select("preferred_call_name, plan, message_count, last_improvement_prompt_at, area_region, area_country, area_asked_at, area_answered_at, area_declined")
+    .select("preferred_call_name, plan, message_count, last_improvement_prompt_at, area_region, area_country, area_asked_at, area_answered_at, area_declined, last_closing_index")
     .eq("id", userId)
     .maybeSingle();
   return data;
@@ -1670,17 +1670,21 @@ export async function POST(req: NextRequest) {
             }
 
             if (detected.region || detected.country) {
-              await getSupabase()
-                .from("users_profile")
-                .update({
-                  area_region: detected.region || null,
-                  area_country: detected.country || null,
-                  area_answered_at: new Date().toISOString(),
-                })
-                .eq("id", userId);
               const areaKey = detected.region || detected.country || "";
-              const reply = buildAreaFollowUp(areaKey);
+              const { response: reply, closingIndex } = buildAreaFollowUp(
+                areaKey,
+                areaProfile?.last_closing_index ?? null,
+              );
               await Promise.all([
+                getSupabase()
+                  .from("users_profile")
+                  .update({
+                    area_region: detected.region || null,
+                    area_country: detected.country || null,
+                    area_answered_at: new Date().toISOString(),
+                    last_closing_index: closingIndex,
+                  })
+                  .eq("id", userId),
                 saveMessages(userId, userMsg, reply),
                 replyToLine(replyToken, reply),
               ]);
